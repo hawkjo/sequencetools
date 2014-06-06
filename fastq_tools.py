@@ -114,11 +114,16 @@ def longest_subread_above_thresh(qualline, phred_offset, qual_cutoff, min_len=25
             sys.exit('Unexpected qualline input to bookend_qual_subreads: ' + str(qualline))
         low_qual_inds = [i for i, (c1,c2) in enumerate( izip(qualline[0].strip(), 
                 qualline[1].strip()) ) if min(ord(c1),ord(c2)) < phred_offset + qual_cutoff]
+
+    # Add index before first and after last as 'bad bases' to consider as non-included end-points
+    low_qual_inds.insert(0,-1)
+    low_qual_inds.append( len(qualline) )
+
     max_len = 0
     for ind_i, ind_ip1 in izip(low_qual_inds[:-1], low_qual_inds[1:]):
         if ind_ip1 - ind_i > max_len:
-            start = ind_i
-            end = ind_ip1 + 1 # Half-open
+            start = ind_i + 1 # Half-open, not including bad bases
+            end = ind_ip1 
             max_len = end - start
     if max_len < min_len: return None
     return (start, end)
@@ -226,3 +231,38 @@ def trim_low_quality_bases(filename1, filename2=None, subread_func=max_score_sub
                 out[i].write(qualline[i][start:end] + '\n')
 
         for f in out + infile: f.close()
+
+def replace_bad_bases_with_N(filename, cutoff=20):
+    """
+    Replace all bases below the given cutoff (default 20) with 'N'. Outputs to new file.
+    """
+    phred_offset = determine_phred_offset(filename)
+    coded_cutoff = cutoff + phred_offset
+    out_filename = os.path.splitext(filename)[0] + '_Nified_%s.fastq' % cutoff
+    with open(out_filename,'w') as out:
+        with open(filename) as infile:
+            while True:
+                nameline = infile.readline().strip()
+                if not nameline: break
+                seqline = infile.readline().strip()
+                plusline = infile.readline().strip()
+                qualline = infile.readline().strip()
+    
+#                for i, c in enumerate(qualline):
+#                    if ord(c) < coded_cutoff:
+#                        seqline = seqline[:i] + 'N' + seqline[i+1:]
+#
+#                out.write(nameline + '\n')
+#                out.write(seqline + '\n')
+#                out.write(plusline + '\n')
+#                out.write(qualline + '\n')
+
+                seq = list(seqline)
+                for i, c in enumerate(qualline):
+                    if ord(c) < coded_cutoff:
+                        seq[i] = 'N'
+
+                out.write(nameline + '\n')
+                out.write(''.join(seq) + '\n')
+                out.write(plusline + '\n')
+                out.write(qualline + '\n')
