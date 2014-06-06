@@ -248,15 +248,6 @@ def replace_bad_bases_with_N(filename, cutoff=20):
                 plusline = infile.readline().strip()
                 qualline = infile.readline().strip()
     
-#                for i, c in enumerate(qualline):
-#                    if ord(c) < coded_cutoff:
-#                        seqline = seqline[:i] + 'N' + seqline[i+1:]
-#
-#                out.write(nameline + '\n')
-#                out.write(seqline + '\n')
-#                out.write(plusline + '\n')
-#                out.write(qualline + '\n')
-
                 seq = list(seqline)
                 for i, c in enumerate(qualline):
                     if ord(c) < coded_cutoff:
