@@ -172,15 +172,15 @@ def max_score_subread(qualline, phred_offset, score_zero, min_len=25):
             end = b+1
     return (start,end)
 
-def trim_low_quality_bases(filename1, filename2=None, subread_func=max_score_subread, score_zero=20, min_len=25):
+def trim_low_quality_bases(filename1, filename2=None, subread_func=bookend_qual_subread, cutoff=10, min_len=25):
     """
-    trim_low_quality_by_score assigns a score to each phred score simply by subtracting 'score_zero'
+    trim_low_quality_by_score assigns a score to each phred score simply by subtracting 'cutoff'
     from the phred score. We then find the max-score length of read.
     """
     phred_offset = determine_phred_offset(filename1)
     if filename2 is None:
         out_filename = os.path.splitext(filename1)[0] + '_%s_%s.fastq' % \
-                (subread_func.__name__, score_zero)
+                (subread_func.__name__, cutoff)
         with open(out_filename,'w') as out:
             with open(filename1) as infile:
                 while True:
@@ -190,7 +190,7 @@ def trim_low_quality_bases(filename1, filename2=None, subread_func=max_score_sub
                     plusline = infile.readline().strip()
                     qualline = infile.readline().strip()
         
-                    subread_ends = subread_func(qualline, phred_offset, score_zero, min_len)
+                    subread_ends = subread_func(qualline, phred_offset, cutoff, min_len)
 
                     if not subread_ends: continue
                     start, end = subread_ends 
@@ -201,9 +201,9 @@ def trim_low_quality_bases(filename1, filename2=None, subread_func=max_score_sub
                     out.write(qualline[start:end] + '\n')
     else:
         out_filename1 = os.path.splitext(filename1)[0] + '_%s_%s.fastq' % \
-                (subread_func.__name__, score_zero)
+                (subread_func.__name__, cutoff)
         out_filename2 = os.path.splitext(filename2)[0] + '_%s_%s.fastq' % \
-                (subread_func.__name__, score_zero)
+                (subread_func.__name__, cutoff)
 
         out = [open(out_filename1,'w'), open(out_filename2,'w')]
         infile = [open(filename1), open(filename2)]
@@ -219,7 +219,7 @@ def trim_low_quality_bases(filename1, filename2=None, subread_func=max_score_sub
             qualline = [infile[0].readline(), infile[1].readline()]
         
             # Inputting list of two quallines combines the scores at each position
-            subread_ends = subread_func(qualline, phred_offset, score_zero, min_len)
+            subread_ends = subread_func(qualline, phred_offset, cutoff, min_len)
 
             if not subread_ends: continue
             start, end = subread_ends 
