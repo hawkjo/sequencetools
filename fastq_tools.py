@@ -1,4 +1,4 @@
-import sys, os
+import sys, os, re
 import numpy as np
 from itertools import izip
 
@@ -257,3 +257,31 @@ def replace_bad_bases_with_N(filename, cutoff=20):
                 out.write(''.join(seq) + '\n')
                 out.write(plusline + '\n')
                 out.write(qualline + '\n')
+
+GSAF_fastq_id_line_re = re.compile(r"""
+        ^@                              # Starts with @ sign
+        (?P<instrument>[-A-Z0-9]+):     # Instrument name
+        (?P<run>\d+):                   # Run id
+        (?P<flowcell_id>[A-Z0-9]+):     # Flowcell id
+        (?P<flowcell_lane>\d+):         # Flowcell lane
+        (?P<tile>\d+):                  # tile number
+        (?P<xcoord>\d+):                # x-coord
+        (?P<ycoord>\d+)                 # y-coord
+        \                               # space
+        (?P<pair_member>[12]):          # member of pair (1 or 2)
+        (?P<fail_status>[YN]):          # Y(es) if failed, N(o) otherwise
+        (?P<control_bits>\d+):          # Control bits. 0 when all off
+        (?P<barcode>[ACGT]+)            # barcode
+    """, re.VERBOSE)
+
+def get_GSAF_barcode(filename1,filename2=None):
+    barcodes = []
+    for fn in [filename1,filename2]:
+        if fn == None: continue
+        with open(fn) as f:
+            line = f.readline().strip()
+            m = GSAF_fastq_id_line_re.match(line)
+            barcodes.append(m.group('barcode'))
+    if len(barcodes) == 2 and barcodes[0] != barcodes[1]:
+        sys.exit('Error: Different barcodes in read files')
+    return barcodes[0]
