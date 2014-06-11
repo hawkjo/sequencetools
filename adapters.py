@@ -18,7 +18,20 @@ def build_adapters(index_sequence='', max_length=None):
     truncated_slice = slice(None, max_length)
     return adapter_in_R1[truncated_slice], adapter_in_R2[truncated_slice]
 
-def position(R1_seq,
+def single_end_adapter_position(read_seq,
+             adapter_seq,
+             min_comparison_length,
+             max_distance,
+            ):
+    read_positions = find_adapter_positions(read_seq, adapter_seq, min_comparison_length, max_distance)
+
+    read_positions = set(read_positions)
+    if read_positions:
+        return min(read_positions)
+    else:
+        return None
+
+def paired_end_adapter_position(R1_seq,
              R2_seq,
              adapter_in_R1,
              adapter_in_R2,
@@ -35,3 +48,24 @@ def position(R1_seq,
         return min(common_positions)
     else:
         return None
+
+def get_contaminant_list(max_contaminant_length=None):
+    contaminant_file = '/home/hawkjo/python_src/sequence_tools/contaminant_list.txt'
+    contaminant_list = []
+    for line in open(contaminant_file):
+        if line[0] == '#': continue
+
+        var = line.strip().split('\t')
+        name = var[0]
+        seq = var[-1]
+
+        if not name: continue # Blank lines
+        if 'A' not in seq and 'C' not in seq and 'G' not in seq and 'T' not in seq:
+            sys.exit('Non-DNA contaminant, %s: %s' % (name, seq) )
+
+        contaminant_list.append( (name, seq[:max_contaminant_length]) )
+
+    if not contaminant_list:
+        sys.exit('No contaminants found in ' + contaminant_file)
+
+    return contaminant_list
