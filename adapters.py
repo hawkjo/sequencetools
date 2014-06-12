@@ -1,6 +1,7 @@
 import sys, os
 from adapters_cython import *
 from fastq_tools import get_GSAF_barcode
+from general_sequence_tools import dna_rev_comp
 
 tru_seq_R1_rc = 'AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGTAGA'
 tru_seq_R2_rc = 'AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC'
@@ -51,7 +52,7 @@ def paired_end_adapter_position(R1_seq,
     else:
         return None
 
-def get_contaminant_list(max_contaminant_length=None):
+def get_contaminant_list(max_contaminant_length=None, include_rev_comp=True):
     contaminant_file = '/home/hawkjo/python_src/sequence_tools/contaminant_list.txt'
     contaminant_list = []
     for line in open(contaminant_file):
@@ -66,6 +67,8 @@ def get_contaminant_list(max_contaminant_length=None):
             sys.exit('Non-DNA contaminant, %s: %s' % (name, seq) )
 
         contaminant_list.append( (name, seq[:max_contaminant_length]) )
+        if include_rev_comp:
+            contaminant_list.append( (name + ' RevComp', dna_rev_comp(seq[:max_contaminant_length])) )
 
     if not contaminant_list:
         sys.exit('No contaminants found in ' + contaminant_file)
