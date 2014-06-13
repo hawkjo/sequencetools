@@ -102,27 +102,27 @@ def trim_paired_read_adapters(fname1, fname2,  # Files to trim
     deleted_reads = 0
     adapters_found = Counter()
     while True:
-        id_line1 = f1.readline().strip()
-        id_line2 = f2.readline().strip()
-        if not id_line1 or not id_line2: 
-            if not id_line1 and not id_line2:
+        defline1 = f1.readline().strip()
+        defline2 = f2.readline().strip()
+        if not defline1 or not defline2: 
+            if not defline1 and not defline2:
                 break # End of file
             else:
                 sys.exit('Unequal number of lines in paired files')
 
         total_reads += 1
 
-        seq_line1 = f1.readline().strip()
-        plus_line1 = f1.readline().strip()
-        q_line1 = f1.readline().strip()
+        seqline1 = f1.readline().strip()
+        plusline1 = f1.readline().strip()
+        qualline1 = f1.readline().strip()
 
-        seq_line2 = f2.readline().strip()
-        plus_line2 = f2.readline().strip()
-        q_line2 = f2.readline().strip()
+        seqline2 = f2.readline().strip()
+        plusline2 = f2.readline().strip()
+        qualline2 = f2.readline().strip()
 
         for adapter_name, adapter_in_R1, adapter_in_R2 in adapter_tuples:
-            adapter_position = paired_end_adapter_position(seq_line1,
-                                        seq_line2,
+            adapter_position = paired_end_adapter_position(seqline1,
+                                        seqline2,
                                         adapter_in_R1,
                                         adapter_in_R2,
                                         min_comparison_length,
@@ -135,15 +135,15 @@ def trim_paired_read_adapters(fname1, fname2,  # Files to trim
                     break
                 else:
                     trimmed_reads += 1
-                    seq_line1 = seq_line1[:adapter_position]
-                    q_line1 = q_line1[:adapter_position]
-                    seq_line2 = seq_line2[:adapter_position]
-                    q_line2 = q_line2[:adapter_position]
+                    seqline1 = seqline1[:adapter_position]
+                    qualline1 = qualline1[:adapter_position]
+                    seqline2 = seqline2[:adapter_position]
+                    qualline2 = qualline2[:adapter_position]
 
         else:
             # Did not delete the read
-            o1.write('\n'.join([id_line1, seq_line1, plus_line1, q_line1]) + '\n')
-            o2.write('\n'.join([id_line2, seq_line2, plus_line2, q_line2]) + '\n')
+            o1.write('\n'.join([defline1, seqline1, plusline1, qualline1]) + '\n')
+            o2.write('\n'.join([defline2, seqline2, plusline2, qualline2]) + '\n')
 
     f1.close()
     f2.close()
@@ -184,16 +184,16 @@ def trim_single_read_adapters(fname, # File to trim
     deleted_reads = 0
     adapters_found = Counter()
     while True:
-        id_line = f.readline().strip()
-        if not id_line: break # End of file
+        defline = f.readline().strip()
+        if not defline: break # End of file
         total_reads += 1
     
-        seq_line = f.readline().strip()
-        plus_line = f.readline().strip()
-        q_line = f.readline().strip()
+        seqline = f.readline().strip()
+        plusline = f.readline().strip()
+        qualline = f.readline().strip()
     
         for adapter_name, adapter_seq in adapter_list:
-            adapter_position = single_end_adapter_position(seq_line,
+            adapter_position = single_end_adapter_position(seqline,
                                     adapter_seq,
                                     min_comparison_length,
                                     max_mismatches)
@@ -205,11 +205,11 @@ def trim_single_read_adapters(fname, # File to trim
                     break
                 else:
                     trimmed_reads += 1
-                    seq_line = seq_line[:adapter_position]
-                    q_line = q_line[:adapter_position]
+                    seqline = seqline[:adapter_position]
+                    qualline = qualline[:adapter_position]
         else:
             # Non-deleted read
-            out.write('\n'.join([id_line, seq_line, plus_line, q_line]) + '\n')
+            out.write('\n'.join([defline, seqline, plusline, qualline]) + '\n')
     
     f.close()
     out.close()
