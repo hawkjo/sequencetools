@@ -1,2 +1,6 @@
 *.swp
 *.pyc
+*.c
+*.html
+*.so
+build
