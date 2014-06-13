@@ -80,8 +80,17 @@ def trim_paired_read_adapters(fname1, fname2,  # Files to trim
     #       (adapter_name, adapter_in_R1, adapter_in_R2)
     adapter_tuples = adapter_tuples_func( fname1, fname2, max_comparison_length )
 
-    outname1 = os.path.splitext(fname1)[0] + '_deadaptered.fastq'
-    outname2 = os.path.splitext(fname2)[0] + '_deadaptered.fastq'
+    if 'GSAF' in adater_tuples_func.__name__:
+        adapter_type = 'GSAF'
+    elif 'fastqc' in adapter_tuples_func.__name__:
+        adapter_type = 'fastqc'
+    else:
+        adapter_type = adater_tuples_func.__name__
+
+    outname1 = os.path.splitext(fname1)[0] + '_deadaptered_%s_%d-%d_%d.fastq' \
+            % (adapter_type, min_comparison_length, max_comparison_length, max_mismatches)
+    outname2 = os.path.splitext(fname2)[0] + '_deadaptered_%s_%d-%d_%d.fastq' \
+            % (adapter_type, min_comparison_length, max_comparison_length, max_mismatches)
 
     f1 = open(fname1)
     f2 = open(fname2)
@@ -160,11 +169,12 @@ def trim_single_read_adapters(fname, # File to trim
     # Default min/max comparison len values of 12/16 have 2e-6 and 1e-8 probability of randomly
     # appearing within distance 1 of a given sequence.
 
-    outname = os.path.splitext(fname)[0] + '_deadaptered.fastq'
-    
     adapter_list = get_fastqc_contaminant_list( 'adapter_list.txt', 
             max_contaminant_length=max_comparison_length,
             include_rev_comp=False)
+    
+    outname = os.path.splitext(fname)[0] + '_deadaptered_fastqc_%d-%d_%d.fastq' \
+            % (min_comparison_length, max_comparison_length, max_mismatches)
     
     f = open(fname)
     out = open(outname,'w')

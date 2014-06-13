@@ -31,9 +31,10 @@ def get_fastqc_contaminant_list(
 
 def output_contaminant_removal_statistics( 
         total_reads,
+        trimmed_reads,
         deleted_reads,
         contaminants_found,
-        log_file_handle,
+        log_file_handle = sys.stdout,
         contaminant_label = 'Contaminant',
         ):
     """
@@ -42,20 +43,23 @@ def output_contaminant_removal_statistics(
     contaminant_label = contaminant_label[0].upper() + contaminant_label[1:]
     log_file_handle.write( '%s removal statistics:\n' % contaminant_label)
     log_file_handle.write( 'Total reads: %d\n' % total_reads )
-    log_file_handle.write( 'Trimmed reads: %d, %f%%\n' % \
+    if trimmed_reads: 
+        log_file_handle.write( 'Trimmed reads: %d, %f%%\n' % \
             (trimmed_reads, 100*float(trimmed_reads)/total_reads) )
-    log_file_handle.write( 'Deleted reads: %d, %f%%\n' % \
+    if deleted_reads: 
+        log_file_handle.write( 'Deleted reads: %d, %f%%\n' % \
             (deleted_reads, 100*float(deleted_reads)/total_reads) )
-    log_file_handle.write( '%ss found:\n' % contaminant_label)
-    for name, quantity in reversed(sorted(contaminants_found.items(), key=lambda tup: tup[1])):
-        log_file_handle.write( '  %12d  %s\n' % (quantity, name) )
+    if contaminants_found:
+        log_file_handle.write( '%ss found:\n' % contaminant_label)
+        for name, quantity in reversed(sorted(contaminants_found.items(), key=lambda tup: tup[1])):
+            log_file_handle.write( '  %12d  %s\n' % (quantity, name) )
 
 def remove_paired_read_contaminants(fname1, fname2, 
-        min_sw_score_to_delete = 16 # Minimum Smith-Waterman score required to delete a read
+        alignment_score_cutoff = 12 # Minimum Smith-Waterman score required to delete a read
         log_file_handle = sys.stdout
         ):
-    outname1 = os.path.splitext(fname1)[0] + '_decontaminated.fastq'
-    outname2 = os.path.splitext(fname2)[0] + '_decontaminated.fastq'
+    outname1 = os.path.splitext(fname1)[0] + '_decontaminated_%d.fastq' % alignment_score_cutoff
+    outname2 = os.path.splitext(fname2)[0] + '_decontaminated_%d.fastq' % alignment_score_cutoff
     
     contaminant_list = get_fastqc_contaminant_list( 'contaminant_list.txt' )
     
@@ -90,11 +94,11 @@ def remove_paired_read_contaminants(fname1, fname2,
         for contaminant_name, contaminant_seq in contaminant_list:
             if max_alignment_score_above_cutoff(seq_line1,
                         contaminant_seq,
-                        max_sw_score) \
+                        alignment_score_cutoff) \
                     or \
                     max_alignment_score_above_cutoff(seq_line2,
                         contaminant_seq,
-                        max_sw_score):
+                        alignment_score_cutoff):
                 contaminants_found[contaminant_name] += 1
                 deleted_reads += 1
                 break
@@ -105,16 +109,60 @@ def remove_paired_read_contaminants(fname1, fname2,
     f.close()
     out.close()
     
-    log_file_handle.write( 'Adapter removal statistics:\n' )
-    log_file_handle.write( 'Total reads: %d\n' % total_reads )
-    log_file_handle.write( 'Trimmed reads: %d, %f%%\n' % \
-            (trimmed_reads, 100*float(trimmed_reads)/total_reads) )
-    log_file_handle.write( 'Deleted reads: %d, %f%%\n' % \
-            (deleted_reads, 100*float(deleted_reads)/total_reads) )
-    log_file_handle.write( 'Contaminants found:\n' )
-    for name, quantity in reversed(sorted(contaminants_found.items(), key=lambda tup: tup[1])):
-        log_file_handle.write( '  %12d  %s\n' % (quantity, name) )
-    
+    output_contaminant_removal_statistics( 
+        total_reads,
+        trimmed_reads,
+        deleted_reads,
+        contaminants_found,
+        log_file_handle,
+        ):
+
     return outname1, outname2
-ATAAACCCTTATATA
-GTAAACTCTTGGATA
+
+def remove_single_read_contaminants(fname, 
+        alignment_score_cutoff = 10 # Minimum Smith-Waterman score required to delete a read
+        log_file_handle = sys.stdout
+        ):
+    outname = os.path.splitext(fname)[0] + '_decontaminated_%d.fastq' % alignment_score_cutoff
+    
+    contaminant_list = get_fastqc_contaminant_list( 'contaminant_list.txt' )
+    
+    f = open(fname)
+    out = open(outname,'w')
+    
+    total_reads = 0
+    trimmed_reads = 0
+    deleted_reads = 0
+    contaminants_found = Counter()
+    while True:
+        id_line = f.readline().strip()
+        if not id_line: break # End of file
+        total_reads += 1
+    
+        seq_line = f.readline().strip()
+        plus_line = f.readline().strip()
+        q_line = f.readline().strip()
+    
+        for contaminant_name, contaminant_seq in contaminant_list:
+            if max_alignment_score_above_cutoff(seq_line,
+                        contaminant_seq,
+                        alignment_score_cutoff):
+                contaminants_found[contaminant_name] += 1
+                deleted_reads += 1
+                break
+        else:
+            # Non-deleted read
+            out.write('\n'.join([id_line, seq_line, plus_line, q_line]) + '\n')
+    
+    f.close()
+    out.close()
+    
+    output_contaminant_removal_statistics( 
+        total_reads,
+        trimmed_reads,
+        deleted_reads,
+        contaminants_found,
+        log_file_handle,
+        ):
+
+    return outname
