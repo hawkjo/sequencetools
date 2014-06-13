@@ -1,5 +1,5 @@
 import sys, os
-from contaminants_cython import *
+from contaminants_cython import max_alignment_score_above_cutoff
 from general_sequence_tools import dna_rev_comp
 
 def get_fastqc_contaminant_list(
@@ -50,11 +50,8 @@ def output_contaminant_removal_statistics(
     for name, quantity in reversed(sorted(contaminants_found.items(), key=lambda tup: tup[1])):
         log_file_handle.write( '  %12d  %s\n' % (quantity, name) )
 
-def trim_paired_read_contaminants(fname1, fname2, 
-        min_read_len = 25,          # Minimum length of output read
-        min_comparison_length = 9   # Minimum length to compare
-        max_comparison_length = 16  # Maximum length to compare
-        max_mismatches = 2,         # Max hamming distance
+def remove_paired_read_contaminants(fname1, fname2, 
+        min_sw_score_to_delete = 16 # Minimum Smith-Waterman score required to delete a read
         log_file_handle = sys.stdout
         ):
     outname1 = os.path.splitext(fname1)[0] + '_decontaminated.fastq'
@@ -71,7 +68,6 @@ def trim_paired_read_contaminants(fname1, fname2,
     trimmed_reads = 0
     deleted_reads = 0
     contaminants_found = Counter()
-    orphaned_reads = []
     while True:
         id_line1 = f1.readline().strip()
         id_line2 = f2.readline().strip()
@@ -80,6 +76,7 @@ def trim_paired_read_contaminants(fname1, fname2,
                 break # End of file
             else:
                 sys.exit('Unequal number of lines in paired files')
+
         total_reads += 1
     
         seq_line1 = f1.readline().strip()
@@ -90,47 +87,17 @@ def trim_paired_read_contaminants(fname1, fname2,
         plus_line2 = f2.readline().strip()
         q_line2 = f2.readline().strip()
     
-        delete_read1 = False
-        delete_read2 = False
         for contaminant_name, contaminant_seq in contaminant_list:
-            # In this loop, we check for contaminants in both sequences, trimming or deleting as
-            # appropriate. If both need deleted, that happens as normal. If only one needs deleted,
-            # then the second read is added to the orphaned sequence list to be placed at the end of
-            # f1.
-
-            # Read 1
-            if not delete_read1:
-                adapter_position = single_end_adapter_position(seq_line1,
-                                        contaminant_seq,
-                                        min_comparison_length,
-                                        max_mismatches)
-        
-                if adapter_position != None:
-                    contaminants_found[contaminant_name] += 1
-                    if adapter_position < min_read_len:
-                        deleted_reads += 1
-                        delete_read1 = True
-                    else:
-                        trimmed_reads += 1
-                        seq_line1 = seq_line1[:adapter_position]
-                        q_line1 = q_line1[:adapter_position]
-
-            # Read 2
-            if not delete_read2:
-                adapter_position = single_end_adapter_position(seq_line2,
-                                        contaminant_seq,
-                                        min_comparison_length,
-                                        max_mismatches)
-        
-                if adapter_position != None:
-                    contaminants_found[contaminant_name] += 1
-                    if adapter_position < min_read_len:
-                        deleted_reads += 1
-                        delete_read2 = True
-                    else:
-                        trimmed_reads += 1
-                        seq_line2 = seq_line2[:adapter_position]
-                        q_line2 = q_line2[:adapter_position]
+            if max_alignment_score_above_cutoff(seq_line1,
+                        contaminant_seq,
+                        max_sw_score) \
+                    or \
+                    max_alignment_score_above_cutoff(seq_line2,
+                        contaminant_seq,
+                        max_sw_score):
+                contaminants_found[contaminant_name] += 1
+                deleted_reads += 1
+                break
         else:
             # Non-deleted read
             out1.write('\n'.join([id_line1, seq_line1, plus_line1, q_line1]) + '\n')
@@ -149,3 +116,5 @@ def trim_paired_read_contaminants(fname1, fname2,
         log_file_handle.write( '  %12d  %s\n' % (quantity, name) )
     
     return outname1, outname2
+ATAAACCCTTATATA
+GTAAACTCTTGGATA
