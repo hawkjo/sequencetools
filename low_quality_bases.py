@@ -1,6 +1,8 @@
 import sys, os
 import numpy as np
 from itertools import izip
+from fastq_tools import determine_phred_offset
+from contaminants import output_contaminant_removal_statistics
 
 def bookend_qual_subread(qualline, phred_offset, qual_cutoff, min_len=25):
     """
@@ -139,11 +141,11 @@ def trim_single_read_low_quality_bases(fname,
         trimmed_reads,
         deleted_reads,
         contaminants_found=None,
-        log_file_handle = sys.stdout,
+        log_file_handle = log_file_handle,
         contaminant_label = 'Low Quality Base',
         )
 
-def trim_paired_read_low_quality_bases(fname1, fname2
+def trim_paired_read_low_quality_bases(fname1, fname2,
         subread_func=bookend_qual_subread,      # Function which finds where to trim
         cutoff=10,                              # Quality cutoff, used differently in different funcs
         min_len=25,                             # Min length of output read
@@ -156,6 +158,7 @@ def trim_paired_read_low_quality_bases(fname1, fname2
     If one of a pair of reads is deleted, the remaining read is stored as an
     orphaned read and placed at the end of the left reads file.
     """
+    phred_offset = determine_phred_offset(fname1)
     outname1 = os.path.splitext(fname1)[0] + '_%s_%s.fastq' % \
             (subread_func.__name__, cutoff)
     outname2 = os.path.splitext(fname2)[0] + '_%s_%s.fastq' % \
@@ -192,7 +195,7 @@ def trim_paired_read_low_quality_bases(fname1, fname2
         subread_ends1 = subread_func(qualline1, phred_offset, cutoff, min_len)
         subread_ends2 = subread_func(qualline2, phred_offset, cutoff, min_len)
 
-        if subread_end1 and subread_ends2:
+        if subread_ends1 and subread_ends2:
             # Do not delete either read. Output (trimmed) reads.
             start, end = subread_ends1
             if start != 0 or end != len(seqline1):
@@ -217,7 +220,7 @@ def trim_paired_read_low_quality_bases(fname1, fname2
                 trimmed_reads += 1
                 seqline1 = seqline1[start:end]
                 qualline1 = qualline1[start:end]
-            orphaned_reads.append( '\n'.join( defline1, seqline1, plusline1, qualline1) )
+            orphaned_reads.append( '\n'.join( [defline1, seqline1, plusline1, qualline1] ) )
 
         elif subread_ends2:
             # Delete read 1, but keep read 2 as an orphaned read
@@ -227,7 +230,7 @@ def trim_paired_read_low_quality_bases(fname1, fname2
                 trimmed_reads += 1
                 seqline2 = seqline2[start:end]
                 qualline2 = qualline2[start:end]
-            orphaned_reads.append( '\n'.join( defline2, seqline2, plusline2, qualline2) )
+            orphaned_reads.append( '\n'.join( [defline2, seqline2, plusline2, qualline2] ) )
 
         else:
             # Delete both reads
@@ -246,7 +249,7 @@ def trim_paired_read_low_quality_bases(fname1, fname2
         trimmed_reads,
         deleted_reads,
         contaminants_found=None,
-        log_file_handle = sys.stdout,
+        log_file_handle = log_file_handle,
         contaminant_label = 'Low Quality Base',
         )
     log_file_handle.write( 'Orphaned reads: %d\n' % (len(orphaned_reads)) )

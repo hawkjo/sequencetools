@@ -54,7 +54,8 @@ def paired_end_adapter_position(R1_seq,
         return None
 
 def get_fastqc_paired_read_adapters(fname1, fname2, max_comparison_length = 16 ):
-    adapter_list = get_fastqc_contaminant_list( 'adapter_list.txt', 
+    adapter_file = '/home/hawkjo/python_src/sequence_tools/adapter_list.txt'
+    adapter_list = get_fastqc_contaminant_list( adapter_file, 
             max_contaminant_length=max_comparison_length,
             include_rev_comp=False)
     adapter_tuples = [(name, adapter, adapter) for name, adapter in adapter_list]
@@ -70,8 +71,8 @@ def get_GSAF_paired_read_adapter_tuples(fname1, fname2, max_comparison_length=16
 def trim_paired_read_adapters(fname1, fname2,  # Files to trim
         adapter_tuples_func = get_fastqc_paired_read_adapters,        
         min_read_len = 25,          # Minimum length of output read
-        min_comparison_length = 9   # Minimum length to compare
-        max_comparison_length = 16  # Maximum length to compare
+        min_comparison_length = 9,  # Minimum length to compare
+        max_comparison_length = 16, # Maximum length to compare
         max_mismatches = 2,         # Max hamming distance
         log_file_handle = sys.stdout
         ):
@@ -80,7 +81,7 @@ def trim_paired_read_adapters(fname1, fname2,  # Files to trim
     #       (adapter_name, adapter_in_R1, adapter_in_R2)
     adapter_tuples = adapter_tuples_func( fname1, fname2, max_comparison_length )
 
-    if 'GSAF' in adater_tuples_func.__name__:
+    if 'GSAF' in adapter_tuples_func.__name__:
         adapter_type = 'GSAF'
     elif 'fastqc' in adapter_tuples_func.__name__:
         adapter_type = 'fastqc'
@@ -152,8 +153,9 @@ def trim_paired_read_adapters(fname1, fname2,  # Files to trim
 
     output_contaminant_removal_statistics( 
         total_reads,
+        trimmed_reads,
         deleted_reads,
-        contaminants_found,
+        adapters_found,
         log_file_handle,
         contaminant_label = 'Adapter')
 
@@ -161,15 +163,16 @@ def trim_paired_read_adapters(fname1, fname2,  # Files to trim
 
 def trim_single_read_adapters(fname, # File to trim
         min_read_len = 25,          # Minimum length of output read
-        min_comparison_length = 12  # Minimum length to compare
-        max_comparison_length = 16  # Maximum length to compare
+        min_comparison_length = 12, # Minimum length to compare
+        max_comparison_length = 16, # Maximum length to compare
         max_mismatches = 1,         # Max hamming distance
         log_file_handle = sys.stdout
         ):
     # Default min/max comparison len values of 12/16 have 2e-6 and 1e-8 probability of randomly
     # appearing within distance 1 of a given sequence.
 
-    adapter_list = get_fastqc_contaminant_list( 'adapter_list.txt', 
+    adapter_file = '/home/hawkjo/python_src/sequence_tools/adapter_list.txt'
+    adapter_list = get_fastqc_contaminant_list( adapter_file, 
             max_contaminant_length=max_comparison_length,
             include_rev_comp=False)
     
@@ -216,8 +219,9 @@ def trim_single_read_adapters(fname, # File to trim
     
     output_contaminant_removal_statistics( 
         total_reads,
+        trimmed_reads,
         deleted_reads,
-        contaminants_found,
+        adapters_found,
         log_file_handle,
         contaminant_label = 'Adapter')
 

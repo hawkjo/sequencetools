@@ -1,6 +1,7 @@
 import sys, os
-from contaminants_cython import max_alignment_score_above_cutoff
+from contaminants_cython import test_for_contaminant
 from general_sequence_tools import dna_rev_comp
+from collections import Counter, defaultdict
 
 def get_fastqc_contaminant_list(
         contaminant_file,
@@ -29,6 +30,40 @@ def get_fastqc_contaminant_list(
 
     return contaminant_list
 
+def build_contaminant_kmers_dict(contaminant_list, k):
+    """
+    Builds dict with kmers as keys and a list of all contaminant names containing the given kmer as
+    values for all contaminants in given contaminant list and for given value of k.
+    """
+    # Build the contaminant_kmers dict as a defaultdict of sets for uniqueness
+    contaminant_kmers = defaultdict(set)
+    for name, seq in contaminant_list:
+        for i in xrange(len(seq)-k+1):
+            contaminant_kmers[seq[i:i+k]].add(name)
+    # Clean the dict by making it a regular dict and converting sets to lists
+    output_dict = {}
+    for kmer, contaminant_name_set in contaminant_kmers.items():
+        output_dict[kmer] = list(contaminant_name_set)
+    return output_dict
+
+def get_fastqc_contaminant_kmers_dict(contaminant_file, k):
+    """
+    Wrapper around build_contaminant_kmers_dict given contaminant filename instead of contaminant
+    list.
+    """
+    contaminant_list = get_fastqc_contaminant_list(contaminant_file)
+    return build_contaminant_kmers_dict(contaminant_list, k)
+
+def get_fastqc_contaminant_dict(contaminant_file):
+    """
+    Builds dict of seq given name for contaminants in given file name.
+    """
+    contaminant_list = get_fastqc_contaminant_list(contaminant_file)
+    contaminant_dict = {}
+    for name, seq in contaminant_list:
+        contaminant_dict[name] = seq
+    return contaminant_dict
+
 def output_contaminant_removal_statistics( 
         total_reads,
         trimmed_reads,
@@ -38,7 +73,7 @@ def output_contaminant_removal_statistics(
         contaminant_label = 'Contaminant',
         ):
     """
-    Write a summary of the contaminants removed to log_file_handle.
+    Write a summary of the contaminants removed to log_file_handle (default stdout).
     """
     contaminant_label = contaminant_label[0].upper() + contaminant_label[1:]
     log_file_handle.write( '%s removal statistics:\n' % contaminant_label)
@@ -55,13 +90,17 @@ def output_contaminant_removal_statistics(
             log_file_handle.write( '  %12d  %s\n' % (quantity, name) )
 
 def remove_paired_read_contaminants(fname1, fname2, 
-        alignment_score_cutoff = 12 # Minimum Smith-Waterman score required to delete a read
+        k = 11,                         # k-mer to use exact matches to contaminants
+        alignment_score_cutoff = 14,    # Minimum Smith-Waterman score required to delete a read
         log_file_handle = sys.stdout
         ):
     outname1 = os.path.splitext(fname1)[0] + '_decontaminated_%d.fastq' % alignment_score_cutoff
     outname2 = os.path.splitext(fname2)[0] + '_decontaminated_%d.fastq' % alignment_score_cutoff
     
-    contaminant_list = get_fastqc_contaminant_list( 'contaminant_list.txt' )
+    contaminant_file = '/home/hawkjo/python_src/sequence_tools/contaminant_list.txt'
+    contaminant_list = get_fastqc_contaminant_list( contaminant_file )
+    contaminant_dict = get_fastqc_contaminant_dict( contaminant_file )
+    contaminant_kmers_dict = build_contaminant_kmers_dict( contaminant_list, k )
     
     f1 = open(fname1)
     f2 = open(fname2)
@@ -73,41 +112,52 @@ def remove_paired_read_contaminants(fname1, fname2,
     deleted_reads = 0
     contaminants_found = Counter()
     while True:
-        id_line1 = f1.readline().strip()
-        id_line2 = f2.readline().strip()
-        if not id_line1 or not id_line2: 
-            if not id_line1 and not id_line2:
+        defline1 = f1.readline().strip()
+        defline2 = f2.readline().strip()
+        if not defline1 or not defline2: 
+            if not defline1 and not defline2:
                 break # End of file
             else:
                 sys.exit('Unequal number of lines in paired files')
 
         total_reads += 1
     
-        seq_line1 = f1.readline().strip()
-        plus_line1 = f1.readline().strip()
-        q_line1 = f1.readline().strip()
+        seqline1 = f1.readline().strip()
+        plusline1 = f1.readline().strip()
+        qualline1 = f1.readline().strip()
     
-        seq_line2 = f2.readline().strip()
-        plus_line2 = f2.readline().strip()
-        q_line2 = f2.readline().strip()
+        seqline2 = f2.readline().strip()
+        plusline2 = f2.readline().strip()
+        qualline2 = f2.readline().strip()
     
-        for contaminant_name, contaminant_seq in contaminant_list:
-            if max_alignment_score_above_cutoff(seq_line1,
-                        contaminant_seq,
-                        alignment_score_cutoff) \
-                    or \
-                    max_alignment_score_above_cutoff(seq_line2,
-                        contaminant_seq,
-                        alignment_score_cutoff):
-                contaminants_found[contaminant_name] += 1
-                deleted_reads += 1
-                break
-        else:
-            # Non-deleted read
-            out1.write('\n'.join([id_line1, seq_line1, plus_line1, q_line1]) + '\n')
-    
-    f.close()
-    out.close()
+        contaminant1_name = test_for_contaminant(seqline1,
+                    alignment_score_cutoff, 
+                    k, 
+                    contaminant_kmers_dict, 
+                    contaminant_dict) 
+        if contaminant1_name:
+            deleted_reads += 1
+            contaminants_found[ contaminant1_name ] += 1
+            continue
+
+        contaminant2_name = test_for_contaminant(seqline2,
+                    alignment_score_cutoff, 
+                    k, 
+                    contaminant_kmers_dict, 
+                    contaminant_dict)
+        if contaminant2_name:
+            deleted_reads += 1
+            contaminants_found[ contaminant2_name ] += 1
+            continue
+
+        # Non-deleted read
+        out1.write('\n'.join([defline1, seqline1, plusline1, qualline1]) + '\n')
+        out2.write('\n'.join([defline2, seqline2, plusline2, qualline2]) + '\n')
+
+    f1.close()
+    f2.close()
+    out1.close()
+    out2.close()
     
     output_contaminant_removal_statistics( 
         total_reads,
@@ -115,17 +165,21 @@ def remove_paired_read_contaminants(fname1, fname2,
         deleted_reads,
         contaminants_found,
         log_file_handle,
-        ):
+        )
 
     return outname1, outname2
 
 def remove_single_read_contaminants(fname, 
-        alignment_score_cutoff = 10 # Minimum Smith-Waterman score required to delete a read
+        k = 11,                         # k-mer to use exact matches to contaminants
+        alignment_score_cutoff = 14,    # Minimum Smith-Waterman score required to delete a read
         log_file_handle = sys.stdout
         ):
     outname = os.path.splitext(fname)[0] + '_decontaminated_%d.fastq' % alignment_score_cutoff
     
-    contaminant_list = get_fastqc_contaminant_list( 'contaminant_list.txt' )
+    contaminant_file = '/home/hawkjo/python_src/sequence_tools/contaminant_list.txt'
+    contaminant_list = get_fastqc_contaminant_list( contaminant_file )
+    contaminant_dict = get_fastqc_contaminant_dict( contaminant_file )
+    contaminant_kmers_dict = build_contaminant_kmers_dict( contaminant_list, k )
     
     f = open(fname)
     out = open(outname,'w')
@@ -135,24 +189,26 @@ def remove_single_read_contaminants(fname,
     deleted_reads = 0
     contaminants_found = Counter()
     while True:
-        id_line = f.readline().strip()
-        if not id_line: break # End of file
+        defline = f.readline().strip()
+        if not defline: break # End of file
         total_reads += 1
     
-        seq_line = f.readline().strip()
-        plus_line = f.readline().strip()
-        q_line = f.readline().strip()
+        seqline = f.readline().strip()
+        plusline = f.readline().strip()
+        qualline = f.readline().strip()
     
-        for contaminant_name, contaminant_seq in contaminant_list:
-            if max_alignment_score_above_cutoff(seq_line,
-                        contaminant_seq,
-                        alignment_score_cutoff):
-                contaminants_found[contaminant_name] += 1
-                deleted_reads += 1
-                break
+        contaminant_name = test_for_contaminant(seqline,
+                    alignment_score_cutoff, 
+                    k, 
+                    contaminant_kmers_dict, 
+                    contaminant_dict)
+
+        if contaminant_name:
+            deleted_reads += 1
+            contaminants_found[ contaminant_name ] += 1
         else:
             # Non-deleted read
-            out.write('\n'.join([id_line, seq_line, plus_line, q_line]) + '\n')
+            out.write('\n'.join([defline, seqline, plusline, qualline]) + '\n')
     
     f.close()
     out.close()
@@ -163,6 +219,6 @@ def remove_single_read_contaminants(fname,
         deleted_reads,
         contaminants_found,
         log_file_handle,
-        ):
+        )
 
     return outname
