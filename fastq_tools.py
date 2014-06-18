@@ -1,4 +1,5 @@
-import sys, re
+import sys, re, random
+import numpy as np
 
 def determine_phred_offset(filename):
     min_val = 126
@@ -44,3 +45,25 @@ def get_GSAF_barcode(filename1,filename2=None):
     if len(barcodes) == 2 and barcodes[0] != barcodes[1]:
         sys.exit('Error: Different barcodes in read files')
     return barcodes[0]
+
+def make_add_errors_to_seq_func( phred_offset ):
+    p_given_coded_phred = np.zeros(150)
+    for coded_Q in xrange(phred_offset, phred_offset + 42):
+        Q = coded_Q - phred_offset
+        p_given_coded_phred[coded_Q] = 10**(-0.1*Q)
+        if p_given_coded_phred[coded_Q] > 1:
+            sys.exit('Error probability greater than 1: p=%f, Q=%d, phred_offset=%d' % \
+                        (p, Q, phred_offset) )
+
+    def add_errors_to_seq( seq, qualline ):
+        erroneous_seq = list(seq)
+        for j in xrange(len(seq)):
+            if random.random() < p_given_coded_phred[ord(qualline[j])]:
+                erroneous_seq[j] = random.choice( 'ACGT'.replace( erroneous_seq[j], '') )
+        return ''.join( erroneous_seq )
+
+    return add_errors_to_seq
+
+def make_add_errors_to_seq_func_given_example_file( fname ):
+    phred_offset = determine_phred_offset( fname )
+    return make_add_errors_to_seq_func( phred_offset )
