@@ -94,6 +94,11 @@ def analyze_deadaptered_single_read_fake_data( fname,
     # We need the read length to known the last read which should be deleted
     with open(fname) as f:
         defline = f.readline().strip()
+        if not defline: 
+            log_file_handle.write( '    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n' )
+            log_file_handle.write( '               Entire file removed\n' )
+            log_file_handle.write( '    !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n' )
+            return 
         read_num, read_len, adapter_position = map(int, fake_data_defline_re.match(defline).groups() )
 
     last_read_num = 2 * num_output_w_adapter_per_position * read_len - 1
@@ -145,12 +150,14 @@ def analyze_deadaptered_single_read_fake_data( fname,
             #----------------------------------------
             if read_num != prev_read_num + 1:
                 if prev_read_num < last_read_num_which_should_be_deleted:
-                    local_correctly_deleted = min( read_num - prev_read_num - 1, 
+                    # Deal with reads that should have been deleted and were
+                    local_reads_correctly_deleted = min( read_num - prev_read_num - 1, 
                                             last_read_num_which_should_be_deleted - prev_read_num )
-                    reads_correctly_deleted += local_correctly_deleted
-                    bases_correctly_removed += local_correctly_deleted * read_len
+                    reads_correctly_deleted += local_reads_correctly_deleted
+                    bases_correctly_removed += local_reads_correctly_deleted * read_len
     
                 if read_num > last_read_num_which_should_be_deleted + 1:
+                    # Deal with reads that should not have been deleted but were anyway
                     local_reads_which_should_not_have_been_deleted_but_were, \
                         local_bases_which_should_not_have_been_removed_but_were, \
                         local_bases_correctly_removed = \
@@ -170,6 +177,7 @@ def analyze_deadaptered_single_read_fake_data( fname,
                     sys.exit( 'Methods of determining deletion status inconsistent.')
                 reads_which_should_have_been_deleted_but_were_not += 1
                 bases_which_should_have_been_removed_but_were_not += len(seqline) 
+                bases_correctly_removed += read_len - len(seqline)
             elif adapter_position < read_len and adapter_position == len(seqline):
                 # Correctly trimmed
                 reads_correctly_trimmed += 1
@@ -198,22 +206,17 @@ def analyze_deadaptered_single_read_fake_data( fname,
     # Deal with reads posssibly deleted from the end
     #--------------------------------------------------
     if read_num != last_read_num:
-        #if last_read_num != read_num + 1:
-            # If more than one read was deleted, the afore-used function will deal with them.
-            # We use last_read_num + 1 as the first argument because it is the next read number
-            # which was not mistakenly deleted.
-            local_reads_which_should_not_have_been_deleted_but_were, \
-                local_bases_which_should_not_have_been_removed_but_were, \
-                local_bases_correctly_removed = \
-                stats_on_reads_which_should_not_have_been_deleted_but_were( last_read_num + 1, read_num)
-            reads_which_should_not_have_been_deleted_but_were += \
-                    local_reads_which_should_not_have_been_deleted_but_were
-            bases_which_should_not_have_been_removed_but_were += \
-                    local_bases_which_should_not_have_been_removed_but_were
-            bases_correctly_removed += local_bases_correctly_removed
-        # The last read needs dealt with separately, though.
-        #reads_which_should_not_have_been_deleted_but_were += 1
-        #bases_which_should_not_have_been_removed_but_were += read_len
+        # We use last_read_num + 1 as the first argument because it is the next read number
+        # which was not mistakenly deleted.
+        local_reads_which_should_not_have_been_deleted_but_were, \
+            local_bases_which_should_not_have_been_removed_but_were, \
+            local_bases_correctly_removed = \
+            stats_on_reads_which_should_not_have_been_deleted_but_were( last_read_num + 1, read_num)
+        reads_which_should_not_have_been_deleted_but_were += \
+                local_reads_which_should_not_have_been_deleted_but_were
+        bases_which_should_not_have_been_removed_but_were += \
+                local_bases_which_should_not_have_been_removed_but_were
+        bases_correctly_removed += local_bases_correctly_removed
 
     #--------------------------------------------------
     # Output results
