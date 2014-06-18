@@ -70,6 +70,7 @@ def analyze_deadaptered_single_read_fake_data( fname,
         num_output_w_adapter_per_position, 
         min_read_len, 
         log_file_handle = sys.stdout ):
+
     fake_data_defline_re = re.compile( r"""
         @(?P<read_num>\d+)                  # Read number
         \                                   # Space
@@ -122,15 +123,14 @@ def analyze_deadaptered_single_read_fake_data( fname,
                                     read_num - last_read_num_which_should_be_deleted - 1)
         local_num_bases_which_should_not_have_been_trimmed_but_were = \
             bases_which_should_not_have_been_trimmed_but_were_by_deletion( read_num, prev_read_num )
-
-        should_not_have_been_deleted_but_were += local_should_not_have_been_deleted_but_were 
-        num_bases_which_should_not_have_been_trimmed_but_were += \
-            local_num_bases_which_should_not_have_been_trimmed_but_were 
         # Some of the bases in the incorrectly deleted reads possibly should indeed have
         # been trimmed: exactly the total bases in those reads minus those which should not
         # have been trimmed.
-        bases_correctly_trimmed = local_should_not_have_been_deleted_but_were * read_len \
+        local_bases_correctly_trimmed = local_should_not_have_been_deleted_but_were * read_len \
                 + local_num_bases_which_should_not_have_been_trimmed_but_were
+        return (local_should_not_have_been_deleted_but_were,
+                local_num_bases_which_should_not_have_been_trimmed_but_were,
+                local_bases_correctly_trimmed)
 
     with open(fname) as f:
         while True:
@@ -157,7 +157,14 @@ def analyze_deadaptered_single_read_fake_data( fname,
                     bases_correctly_trimmed += local_correctly_deleted * read_len
     
                 if read_num > last_read_num_which_should_be_deleted + 1:
-                    deal_with_reads_which_should_not_have_been_deleted_but_were( read_num, prev_read_num)
+                    local_should_not_have_been_deleted_but_were, \
+                        local_num_bases_which_should_not_have_been_trimmed_but_were, \
+                        local_bases_correctly_trimmed = \
+                        deal_with_reads_which_should_not_have_been_deleted_but_were( read_num, prev_read_num)
+                    should_not_have_been_deleted_but_were += local_should_not_have_been_deleted_but_were
+                    num_bases_which_should_not_have_been_trimmed_but_were += \
+                            local_num_bases_which_should_not_have_been_trimmed_but_were
+                    bases_correctly_trimmed += local_bases_correctly_trimmed
 
             #----------------------------------------
             # Deal with reads which are present
@@ -192,15 +199,27 @@ def analyze_deadaptered_single_read_fake_data( fname,
 
             prev_read_num = read_num
 
+    #--------------------------------------------------
+    # Deal with reads posssibly deleted from the end
+    #--------------------------------------------------
     if read_num != last_read_num:
-        # Test for whether reads were deleted from the end
         if last_read_num != read_num + 1:
             # If more than one read was deleted, the afore-used function will deal with them
-            deal_with_reads_which_should_not_have_been_deleted_but_were( last_read_num, read_num)
+            local_should_not_have_been_deleted_but_were, \
+                local_num_bases_which_should_not_have_been_trimmed_but_were, \
+                local_bases_correctly_trimmed = \
+                deal_with_reads_which_should_not_have_been_deleted_but_were( read_num, prev_read_num)
+            should_not_have_been_deleted_but_were += local_should_not_have_been_deleted_but_were
+            num_bases_which_should_not_have_been_trimmed_but_were += \
+                    local_num_bases_which_should_not_have_been_trimmed_but_were
+            bases_correctly_trimmed += local_bases_correctly_trimmed
         # The last read needs dealt with separately, though.
         should_not_have_been_deleted_but_were += 1
         num_bases_which_should_not_have_been_trimmed_but_were += read_len
 
+    #--------------------------------------------------
+    # Output results
+    #--------------------------------------------------
     log_file_handle.write( '---------- Adapter trimming stats ----------\n' )
     log_file_handle.write( 'Correctly unedited: %d\n' % correctly_unedited )
     log_file_handle.write( 'Correctly deleted: %d\n' % correctly_deleted )
@@ -238,7 +257,16 @@ def test_single_read_adapter_removal( example_file,
         max_comparison_length = 16, # Maximum length to compare
         max_mismatches = 1,         # Max hamming distance
         ):
-    log_file_name = outfile_prefix + '_testing_log.txt'
+
+    log_file_name = '%s_%d_%d_%d_%d_%d_testing_log.txt' % \
+                        ( outfile_prefix,
+                        num_output_w_adapter_per_position ,
+                        min_read_len ,
+                        min_comparison_length ,
+                        max_comparison_length ,
+                        max_mismatches  )
+
+    print 'Log file:',log_file_name
     with open(log_file_name, 'w') as log_file_handle:
         log_file_handle.write( '-------------------- Adapter trimming test --------------------\n' )
         log_file_handle.write( 'Parameters:\n' )
