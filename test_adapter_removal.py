@@ -131,6 +131,9 @@ def analyze_deadaptered_single_read_fake_data( fname,
                 local_bases_which_should_not_have_been_removed_but_were,
                 local_bases_correctly_removed)
 
+    total_reads_in_file = 0
+    total_bases_in_file = 0
+
     with open(fname) as f:
         while True:
             defline = f.readline().strip()
@@ -142,6 +145,9 @@ def analyze_deadaptered_single_read_fake_data( fname,
 
             if len(seqline) != len(qualline):
                 sys.exit( 'Adapter code not trimming seqline and qualline equally' )
+
+            total_reads_in_file += 1
+            total_bases_in_file += len(seqline)
 
             read_num, read_len, adapter_position = map(int, fake_data_defline_re.match(defline).groups() )
 
@@ -246,9 +252,9 @@ def analyze_deadaptered_single_read_fake_data( fname,
     log_file_handle.write( '    Should not have been removed but were: %d\n' % \
             bases_which_should_not_have_been_removed_but_were )
 
-    #--------------------------------------------------
+    #------------------------------------------------------------
     # Check that all reads and bases are accounted for
-    #--------------------------------------------------
+    #------------------------------------------------------------
     reads_counted = \
             reads_correctly_unedited + \
             reads_correctly_deleted + \
@@ -264,15 +270,38 @@ def analyze_deadaptered_single_read_fake_data( fname,
             bases_which_should_have_been_removed_but_were_not + \
             bases_which_should_not_have_been_removed_but_were
 
-    if reads_counted != reads_to_count or bases_counted != bases_to_count:
-        sys.exit( 
+    reads_in_file_accounted_for = \
+            reads_correctly_unedited + \
+            reads_correctly_trimmed + \
+            reads_not_trimmed_enough + \
+            reads_trimmed_too_much + \
+            reads_which_should_have_been_deleted_but_were_not
+
+    bases_in_file_accounted_for = \
+            bases_correctly_unedited + \
+            bases_which_should_have_been_removed_but_were_not 
+
+    if reads_counted != reads_to_count or \
+            bases_counted != bases_to_count or \
+            total_reads_in_file != reads_in_file_accounted_for or \
+            total_bases_in_file != bases_in_file_accounted_for:
+        sys.exit(
                 """
     Error: Bases and/or reads not properly accounted for.
-        Reads accounted for: %d
-        Reads which should have been accounted for: %d
-        Bases accounted for: %d
-        Bases which should have been accounted for: %d
-                """ % ( reads_counted, reads_to_count, bases_counted, bases_to_count )
+
+        Reads pre-editing: %d
+        Reads post-editing: %d
+        Reads pre-editing accounted for: %d
+        Reads post-editing accounted for: %d
+
+        Bases pre-editing: %d
+        Bases post-editing: %d
+        Bases pre-editing accounted for: %d
+        Bases post-editing accounted for: %d
+                """ % ( reads_to_count, total_reads_in_file, 
+                    reads_counted, reads_in_file_accounted_for,
+                    bases_to_count, total_bases_in_file,
+                    bases_counted, bases_in_file_accounted_for )
                 )
 
 def test_single_read_adapter_removal( example_file, 
