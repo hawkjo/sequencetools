@@ -1,11 +1,16 @@
 import sys, re, random
 import numpy as np
 
-def determine_phred_offset(filename):
+def determine_phred_offset(filename, num_reads_to_consider=1000):
     min_val = 126
     max_val = 0
+
+    i = 0
     with open(filename) as f:
         while True:
+            i += 1
+            if i > num_reads_to_consider: break 
+
             nameline = f.readline()
             if not nameline: sys.exit('Could not determine phred offset')
             seqline = f.readline()
@@ -15,8 +20,13 @@ def determine_phred_offset(filename):
             ascii_vals = map(ord, qualline.strip()) # Convert to numerical values
             min_val = min([min_val]+ascii_vals)
             max_val = max([max_val]+ascii_vals)
-            if min_val < 59: return 33 # Illumina 1.8 and Sanger
-            elif max_val > 80: return 64 # Illumina 1.3 - 1.7 and Solexa
+
+    if min_val < 50:
+        return 33 # Illumina 1.8 and Sanger
+    elif max_val > 89: 
+        return 64 # Illumina 1.3 - 1.7 and Solexa
+    else:
+        return determine_phred_offset(filename, num_reads_to_consider= 2*num_reads_to_consider)
 
 GSAF_fastq_id_line_re = re.compile(r"""
         ^@                              # Starts with @ sign
