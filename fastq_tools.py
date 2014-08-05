@@ -1,12 +1,13 @@
-import sys, re, random
+import sys, re, random, os
 import numpy as np
+from misc_tools import gzip_friendly_open
 
 def determine_phred_offset(filename, num_reads_to_consider=1000):
     min_val = 126
     max_val = 0
 
     i = 0
-    with open(filename) as f:
+    with gzip_friendly_open(filename) as f:
         while True:
             i += 1
             if i > num_reads_to_consider: break 
@@ -77,3 +78,31 @@ def make_add_errors_to_seq_func( phred_offset ):
 def make_add_errors_to_seq_func_given_example_file( fname ):
     phred_offset = determine_phred_offset( fname )
     return make_add_errors_to_seq_func( phred_offset )
+
+def convert_phred_scores( fname, out_phred_offset ):
+    if out_phred_offset not in [33,64]:
+        sys.exit('Error: out_phred_offset must be 33 or 64. Received %s' % repr(out_phred_offset) )
+
+    in_phred_offset = determine_phred_offset( fname )
+    if in_phred_offset == out_phred_offset:
+        print 'Cowardly refusing to convert %s from phred%d to phred%d' \
+                % (fname, in_phred_offset, out_phred_offset) 
+        return -1
+
+    phred_diff = out_phred_offset - in_phred_offset
+
+    fname_parts = fname.split('.')
+    out_fname = fname_parts[0] + '_phred' + str(out_phred_offset) + '.' + '.'.join( fname_parts[1:] )
+
+    from misc_tools import gzip_friendly_open
+    with gzip_friendly_open( fname ) as f, gzip_friendly_open( out_fname, 'w' ) as out:
+        while True:
+            defline = f.readline().strip()
+            if not defline: break
+            seqline = f.readline().strip()
+            plusline = f.readline().strip()
+            qualline = f.readline().strip()
+
+            out_qualline = ''.join( [chr(ord(c) + phred_diff) for c in qualline] )
+
+            out.write( '\n'.join([defline, seqline, plusline, out_qualline]) + '\n' )
