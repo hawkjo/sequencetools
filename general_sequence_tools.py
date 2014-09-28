@@ -43,7 +43,7 @@ def simple_translate(rna_string):
     return ''.join([aa_or_X_given_codon[codon] \
             for codon in ( rna_string[i:i+3] for i in range( 0, (len(rna_string)/3)*3, 3 ) )] )
 
-def translate_with_warnings(rna_string):
+def translate_with_warnings(rna_string, next_rna_codon=None):
     warnings = []
     if len(rna_string) % 3 != 0:
         warnings.append( 'non-triplet' )
@@ -52,8 +52,14 @@ def translate_with_warnings(rna_string):
     if 'N' in rna_string:
         warnings.append( 'Ns/Xs in sequence' )
     peptide = simple_translate(rna_string)
+    if next_rna_codon is not None:
+        next_aa = simple_translate(next_rna_codon)
+    else:
+        next_aa = 'X'
     if '*' in peptide and peptide.index('*') != len(peptide) - 1:
         warnings.append( 'stop codon in middle' )
-    if peptide[-1] != '*':
+    if peptide[-1] != '*' and next_aa == '*':
+        warnings.append( 'non-stop last codon but next is' )
+    elif peptide[-1] != '*':
         warnings.append( 'non-stop last codon' )
     return peptide, warnings
