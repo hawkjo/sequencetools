@@ -36,8 +36,8 @@ def count_fasta_and_plot(fasta_fname,
     seq_lens.sort(reverse=True)
     ##################################################
     # Enter here the desired N-Statistic values
-    # !!!!  Must be in ascending order  !!!!
     Ns = [10, 25, 50, 75, 90]
+    Ns.sort()
     ##################################################
     running_base_count = 0
     running_percent = 0
