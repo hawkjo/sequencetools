@@ -2,7 +2,7 @@ import sys, string
 from copy import deepcopy
 from itertools import product
 
-dna_complements = string.maketrans('acgtACGT', 'tgcaTGCA')
+dna_complements = string.maketrans('acgtnACGTN', 'tgcanTGCAN')
 
 def dna_rev_comp(dna_string):
     # Note that this is string translation, not biopython
