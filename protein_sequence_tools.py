@@ -13,6 +13,10 @@ aa_abrs.sort()
 aa_ind_given_abr = {abr: aa_abrs.index(abr) for abr in aa_abrs}
 aa_abr_given_ind = {aa_abrs.index(abr): abr for abr in aa_abrs}
 
+special_aa_char_given_abr = {
+    'MLY': 'K', 'M2L': 'K', 'M3L': 'K', 'ACK': 'K', 'ARM': 'R', 'SRM': 'R', 'DRM': 'R'
+    }
+
 strong_groups = [set('STA'),
                  set('NEQK'),
                  set('NHQK'),
@@ -68,3 +72,13 @@ def clustal_conservation_char(in_aas):
         return '.'
     else:
         return ' '
+
+
+def is_same_aa(aa1, aa2):
+    aa1 = aa1.upper()
+    aa2 = aa2.upper()
+    return (aa1 == aa2
+            or (aa1, aa2) in aa_char_given_abr.items()
+            or (aa2, aa1) in aa_char_given_abr.items()
+            or (aa1, aa2) in special_aa_char_given_abr.items()
+            or (aa2, aa1) in special_aa_char_given_abr.items())
