@@ -32,6 +32,10 @@ aa_given_codon = {
     'UGG': 'W',      'CGG': 'R',      'AGG': 'R',      'GGG': 'G',
     }
 
+codon_set_given_aa = {}
+for aa in set(aa_given_codon.values()):
+    codon_set_given_aa[aa] = set([codon for codon, aaaa in aa_given_codon.items() if aaaa == aa])
+
 aa_or_X_given_codon = deepcopy(aa_given_codon)
 for b in 'ACGU':
     for s in ['NN%s', 'N%sN', '%sNN']:
