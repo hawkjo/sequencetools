@@ -46,9 +46,13 @@ for b1, b2 in product('ACGU', repeat=2):
 aa_or_X_given_codon['NNN'] = 'X'
 
 
+def iterate_codons(na_string):
+    assert isinstance(na_string, str)
+    return (na_string[i:i+3] for i in xrange(0, len(na_string), 3))
+
+
 def simple_translate(rna_string):
-    return ''.join([aa_or_X_given_codon[codon]
-                    for codon in (rna_string[i:i+3] for i in range(0, (len(rna_string)/3)*3, 3))])
+    return ''.join([aa_or_X_given_codon[codon] for codon in iterate_codons(rna_string)])
 
 
 def translate_with_warnings(rna_string, next_rna_codon=None):
