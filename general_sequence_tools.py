@@ -11,6 +11,7 @@ def dna_rev_comp(dna_string):
 
 
 def transcribe(dna_string):
+    dna_string = dna_string.upper()
     return dna_string.replace('T', 'U')
 
 aa_given_codon = {
@@ -38,10 +39,10 @@ for aa in set(aa_given_codon.values()):
 
 aa_or_X_given_codon = deepcopy(aa_given_codon)
 for b in 'ACGU':
-    for s in ['NN%s', 'N%sN', '%sNN']:
+    for s in ['%s', '%sN', 'N%s', 'NN%s', 'N%sN', '%sNN']:
         aa_or_X_given_codon[s % b] = 'X'
 for b1, b2 in product('ACGU', repeat=2):
-    for s in ['N%s%s', '%sN%s', '%s%sN']:
+    for s in ['%s%s', 'N%s%s', '%sN%s', '%s%sN']:
         aa_or_X_given_codon[s % (b1, b2)] = 'X'
 aa_or_X_given_codon['NNN'] = 'X'
 
@@ -56,6 +57,11 @@ def simple_translate(rna_string):
 
 
 def translate_with_warnings(rna_string, next_rna_codon=None):
+    rna_string = rna_string.upper()
+    if 'T' in rna_string and set(rna_string) <= set('ACGTN'):
+        rna_string = transcribe(rna_string)
+    assert set(rna_string) <= set('ACGUN')
+
     warnings = []
     if len(rna_string) % 3 != 0:
         warnings.append('non-triplet')
