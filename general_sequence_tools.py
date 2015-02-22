@@ -1,4 +1,5 @@
 import string
+import re
 from copy import deepcopy
 from itertools import product
 
@@ -13,6 +14,44 @@ def dna_rev_comp(dna_string):
 def transcribe(dna_string):
     dna_string = dna_string.upper()
     return dna_string.replace('T', 'U')
+
+iupac_ambiguity_codes = {
+    'A': 'A',
+    'C': 'C',
+    'G': 'G',
+    'T': 'T',
+    'U': 'T',
+    'M': 'AC',
+    'R': 'AG',
+    'W': 'AT',
+    'S': 'CG',
+    'Y': 'CT',
+    'K': 'GT',
+    'V': 'ACG',
+    'H': 'ACT',
+    'D': 'AGT',
+    'B': 'CGT',
+    'N': 'GATC',
+    }
+
+iupac_ambiguity_complements = {
+    'A': 'T',
+    'C': 'G',
+    'G': 'C',
+    'T': 'A',
+    'U': 'A',
+    'M': 'K',
+    'R': 'Y',
+    'W': 'W',
+    'S': 'S',
+    'Y': 'R',
+    'K': 'M',
+    'V': 'B',
+    'H': 'D',
+    'D': 'H',
+    'B': 'V',
+    'N': 'N',
+    }
 
 aa_given_codon = {
     'UUU': 'F',      'CUU': 'L',      'AUU': 'I',      'GUU': 'V',
@@ -56,13 +95,17 @@ def simple_translate(rna_string):
     return ''.join([aa_or_X_given_codon[codon] for codon in iterate_codons(rna_string)])
 
 
+iupac_ambiguous_re = re.compile('[MRWSYKVHDBN]')
+
 def translate_with_warnings(rna_string, next_rna_codon=None):
     rna_string = rna_string.upper()
-    if 'T' in rna_string and set(rna_string) <= set('ACGTN'):
-        rna_string = transcribe(rna_string)
-    assert set(rna_string) <= set('ACGUN')
+    rna_string = rna_string.replace('T', 'U')
+    rna_string = iupac_ambiguous_re.sub('N', rna_string)
+    assert set(rna_string) <= set('ACGUN'), rna_string
 
     warnings = []
+    if len(rna_string) == 0:
+        return ('', ['empty sequence'])
     if len(rna_string) % 3 != 0:
         warnings.append('non-triplet')
     if rna_string[:3] != 'AUG':
