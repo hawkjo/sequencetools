@@ -76,14 +76,22 @@ codon_set_given_aa = {}
 for aa in set(aa_given_codon.values()):
     codon_set_given_aa[aa] = set([codon for codon, aaaa in aa_given_codon.items() if aaaa == aa])
 
-aa_or_X_given_codon = deepcopy(aa_given_codon)
-for b in 'ACGU':
-    for s in ['%s', '%sN', 'N%s', 'NN%s', 'N%sN', '%sNN']:
-        aa_or_X_given_codon[s % b] = 'X'
-for b1, b2 in product('ACGU', repeat=2):
-    for s in ['%s%s', 'N%s%s', '%sN%s', '%s%sN']:
-        aa_or_X_given_codon[s % (b1, b2)] = 'X'
-aa_or_X_given_codon['NNN'] = 'X'
+# Now, build a general dict which accepts IUPAC ambiguity codes and returns the correct amino acid,
+# possibly 'X'
+aa_or_X_given_codon = {}
+for (c1, nset1), (c2, nset2), (c3, nset3) in product(iupac_ambiguity_codes.items(), repeat=3):
+    general_codon = c1 + c2 + c3
+    possible_aas = set([aa_given_codon[transcribe(''.join(codon))] for codon in product(nset1, nset2, nset3)])
+    if len(possible_aas) == 1:
+        aa_or_X_given_codon[general_codon] = list(possible_aas)[0]
+    else:
+        aa_or_X_given_codon[general_codon] = 'X'
+for c1, c2 in product(iupac_ambiguity_codes.keys(), repeat=2):
+    aa_or_X_given_codon[c1+c2] = 'X'
+for c in iupac_ambiguity_codes.keys():
+    aa_or_X_given_codon[c] = 'X'
+for codon, aa in aa_given_codon.items():
+    assert aa == aa_or_X_given_codon[codon]
 
 
 def iterate_codons(na_string):
@@ -95,13 +103,9 @@ def simple_translate(rna_string):
     return ''.join([aa_or_X_given_codon[codon] for codon in iterate_codons(rna_string)])
 
 
-iupac_ambiguous_re = re.compile('[MRWSYKVHDBN]')
-
 def translate_with_warnings(rna_string, next_rna_codon=None):
     rna_string = rna_string.upper()
-    rna_string = rna_string.replace('T', 'U')
-    rna_string = iupac_ambiguous_re.sub('N', rna_string)
-    assert set(rna_string) <= set('ACGUN'), rna_string
+    assert set(rna_string) <= set(iupac_ambiguity_codes.keys()), rna_string
 
     warnings = []
     if len(rna_string) == 0:
@@ -112,13 +116,17 @@ def translate_with_warnings(rna_string, next_rna_codon=None):
         warnings.append('non-AUG first codon')
     if 'N' in rna_string:
         warnings.append('Ns/Xs in sequence')
+
     peptide = simple_translate(rna_string)
     if next_rna_codon is not None:
         next_aa = simple_translate(next_rna_codon)
     else:
         next_aa = 'X'
-    if '*' in peptide and peptide.index('*') != len(peptide) - 1:
-        warnings.append('stop codon in middle')
+    try:
+        if peptide.index('*') != len(peptide) - 1:
+            warnings.append('stop codon in middle')
+    except ValueError:
+        pass
     if peptide[-1] != '*' and next_aa == '*':
         warnings.append('non-stop last codon but next is')
     elif peptide[-1] != '*':
