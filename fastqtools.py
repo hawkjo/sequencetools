@@ -115,3 +115,31 @@ def convert_phred_scores(fname, out_phred_offset):
             out_qualline = ''.join([chr(ord(c) + phred_diff) for c in qualline])
 
             out.write('\n'.join([defline, seqline, plusline, out_qualline]) + '\n')
+
+
+def iterate_seqs(fpath):
+    with gzip_friendly_open(fpath) as f:
+        while True:
+            defline = f.readline().strip()
+            if not defline:
+                break
+            seqline = f.readline().strip()
+            plusline = f.readline().strip()
+            qualline = f.readline().strip()
+            yield defline, seqline, plusline, qualline
+
+def write_seq(out, defline, seqline, plusline, qualline):
+    out.write('\n'.join([defline, seqline, plusline, qualline]) + '\n')
+
+
+def trim_fastq(input_fpath, output_fpath, length, from_start_or_end):
+    assert from_start_or_end in ['start', 'end']
+    if from_start_or_end == 'start':
+        s = slice(length, None)
+    else:
+        s = slice(None, -length)
+    with open(output_fpath, 'w') as out:
+        for defline, seqline, plusline, qualline in iterate_seqs(input_fpath):
+            seqline = seqline[s]
+            qualline = qualline[s]
+            write_seq(out, defline, seqline, plusline, qualline)
