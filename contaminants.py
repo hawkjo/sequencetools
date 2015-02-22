@@ -1,7 +1,8 @@
 import sys
 import os
+from fastqtools import iterate_seqs, write_seq
 from collections import Counter, defaultdict
-from contaminants_cython import test_for_contaminant
+from contaminants_cython import test_for_contaminant, simple_test_for_contaminant
 from general_sequence_tools import dna_rev_comp
 
 
@@ -236,3 +237,11 @@ def remove_single_read_contaminants(
         )
 
     return outname
+
+def simple_remove_single_read_contaminants(input_fpath, output_fpath, contaminant, max_hamming):
+    cont_rev_comp = dna_rev_comp(contaminant)
+    with open(output_fpath, 'w') as out:
+        for defline, seqline, plusline, qualline in iterate_seqs(input_fpath):
+            if (not simple_test_for_contaminant(seqline, contaminant, max_hamming, 5)
+                    and not simple_test_for_contaminant(seqline, cont_rev_comp, max_hamming, 5)):
+                write_seq(out, defline, seqline, plusline, qualline)

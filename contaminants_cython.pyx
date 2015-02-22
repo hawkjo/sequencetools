@@ -1,6 +1,8 @@
 import numpy as np
 cimport numpy as np
 cimport cython
+from adapters_cython cimport hamming_distance
+from general_sequence_tools import dna_rev_comp
 
 DTYPEINT = np.int
 ctypedef np.int_t DTYPEINT_t
@@ -48,3 +50,45 @@ def test_for_contaminant( char *seq, int alignment_score_cutoff, int k, contamin
                 alignment_score_cutoff):
             return contaminant_name
     return None
+
+
+def simple_test_for_contaminant(char *seq, char *contaminant, int max_hamming, int min_len):
+    cdef int i
+    cdef int len_seq = len(seq)
+    cdef int len_contaminant = len(contaminant)
+
+    # Test for matches overhanging beginning or end of seq
+    for i in xrange(1, max_hamming+1):
+        # beginning of seq
+        subseq = seq[:len_contaminant-i]
+        subcont = contaminant[i:]
+        if hamming_distance(subseq,
+                            subcont,
+                            len_contaminant-i,
+                            len_contaminant-i,
+                            0) <= max_hamming-i:
+            return True
+        # end of seq
+        subseq = seq[len_seq-len_contaminant+i:]
+        subcont = contaminant[:len_contaminant-i]
+        if hamming_distance(subseq,
+                            subcont,
+                            len_contaminant-i,
+                            len_contaminant-i,
+                            0) <= max_hamming-i:
+            return True
+    for i in xrange(max_hamming+1, len_contaminant-min_len):
+        if (seq[:len_contaminant-i] == contaminant[i:]
+                or seq[len_seq-len_contaminant+i:] == contaminant[:len_contaminant-i]):
+            return True
+
+    # Test for matches entirely within seq
+    for i in xrange(len_seq-len_contaminant+1):
+        if hamming_distance(seq,
+                            contaminant,
+                            len_seq,
+                            len_contaminant,
+                            i) <= max_hamming:
+            return True
+    return False
+
