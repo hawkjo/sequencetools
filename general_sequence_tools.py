@@ -1,7 +1,11 @@
+import sys
+import os
 import string
 import re
 from copy import deepcopy
 from itertools import product
+from collections import Counter
+from Bio import SeqIO
 
 dna_complements = string.maketrans('acgtnACGTN', 'tgcanTGCAN')
 
@@ -132,3 +136,29 @@ def translate_with_warnings(rna_string, next_rna_codon=None):
     elif peptide[-1] != '*':
         warnings.append('non-stop last codon')
     return peptide, warnings
+
+def records_to_strs(records):
+    for record in records:
+        if isinstance(record, str):
+            yield record
+        else:
+            yield str(record.seq)
+
+def translation_warnings_report(fname_or_seqiter):
+    if (isinstance(fname_or_seqiter, str)
+            and os.path.splitext(fname_or_seqiter)[-1] in ['.fa', '.fasta', '.fsa']):
+        seq_iter = records_to_strs(SeqIO.parse(fname_or_seqiter, 'fasta'))
+    elif hasattr(fname_or_seqiter, '__iter__'):
+        seq_iter = records_to_strs(fname_or_seqiter)
+    else:
+        sys.exit('Cannot open or iterate over argument.')
+
+    warnings = Counter()
+    for seq in seq_iter:
+        new_warnings = translate_with_warnings(seq)[1]
+        if new_warnings:
+            warnings.update(new_warnings)
+        else:
+            warnings['no warnings'] += 1
+    for warning, count in warnings.items():
+        print '%30s: %d' % (warning, count)
