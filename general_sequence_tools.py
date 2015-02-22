@@ -112,7 +112,7 @@ def translate_with_warnings(rna_string, next_rna_codon=None):
         return ('', ['empty sequence'])
     if len(rna_string) % 3 != 0:
         warnings.append('non-triplet')
-    if rna_string[:3] != 'AUG':
+    if rna_string[:3] not in ['AUG', 'ATG']:
         warnings.append('non-AUG first codon')
     if 'N' in rna_string:
         warnings.append('Ns/Xs in sequence')
