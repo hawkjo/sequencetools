@@ -135,6 +135,8 @@ def translate_with_warnings(rna_string, next_rna_codon=None):
         warnings.append('non-stop last codon but next is')
     elif peptide[-1] != '*':
         warnings.append('non-stop last codon')
+    if not warnings:
+        warnings = ['no warnings']
     return peptide, warnings
 
 def records_to_strs(records):
@@ -155,10 +157,6 @@ def translation_warnings_report(fname_or_seqiter):
 
     warnings = Counter()
     for seq in seq_iter:
-        new_warnings = translate_with_warnings(seq)[1]
-        if new_warnings:
-            warnings.update(new_warnings)
-        else:
-            warnings['no warnings'] += 1
+        warnings.update(translate_with_warnings(seq)[1])
     for warning, count in warnings.items():
         print '%30s: %d' % (warning, count)
