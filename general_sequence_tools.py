@@ -91,7 +91,7 @@ for (c1, nset1), (c2, nset2), (c3, nset3) in product(iupac_ambiguity_codes.items
     else:
         aa_or_X_given_codon[general_codon] = 'X'
 for c1, c2 in product(iupac_ambiguity_codes.keys(), repeat=2):
-    aa_or_X_given_codon[c1+c2] = 'X'
+    aa_or_X_given_codon[c1+c2] = aa_or_X_given_codon[c1+c2+'N']  # Not necessarily X, e.g. CGN -> R
 for c in iupac_ambiguity_codes.keys():
     aa_or_X_given_codon[c] = 'X'
 for codon, aa in aa_given_codon.items():
