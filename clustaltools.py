@@ -3,59 +3,55 @@ from Bio import SeqIO
 from protein_sequence_tools import aas
 
 def score_clustal(fpath):
-    seq_names = [rec.id for rec in SeqIO.parse(fpath, 'clustal')]
+    seq_names = set([rec.id for rec in SeqIO.parse(fpath, 'clustal')])
     num_seqs = len(seq_names)
 
-    # Scan file to find length of header, offset of sequence, and number of sequence sets
-    reached_seq = False
-    num_seq_sets = 0
+    # Scan file to find length of header and offset of sequence
     for i, line in enumerate(open(fpath)):
         var = line.strip().split()
-        if not reached_seq and var[0] in seq_names:
-            reached_seq = True
+        if var and var[0] in seq_names:
             num_header_lines = i
             seq_offset = line.index(var[1])
-        if var[0] == seq_names[0]:
-            num_seq_sets += 1
+            break
 
-    with open(fpath) as f:
-        # Skip header
-        for _ in range(i):
-            f.readline()
+    seqs = {seq_name: '' for seq_name in seq_names}
+    cons = ''
+    curr_seq_set = set()
+    for i, line in enumerate(open(fpath)):
+        if i < num_header_lines:
+            continue
+        elif curr_seq_set == seq_names:
+            # All seqs in current set have been read. Next line in cons line.
+            cons += line.replace('\n', '')[seq_offset:]
+            curr_seq_set = set()
+        else:
+            var = line.strip().split()
+            if var and var[0] in seq_names:
+                seq_name = var[0]
+                seqs[seq_name] += var[1]
+                curr_seq_set.add(seq_name)
+    # Assert that the cons string and all seq strings are the same length
+    assert set([len(cons)]) == set([len(seq) for seq in seqs.values()]), '%s\n%s' % (seqs, cons)
 
-        # Process alignments
-        total_len_seq = 0
-        cons_score_counts = Counter(' '=0, '.'=0, ':'=0, '*'=0)
-        num_cols_with_gaps = 0
-        for _ in xrange(num_seq_sets):
-            seqs = []
-            for _ in xrange(num_seqs):
-                var = f.readline().strip().split()
-                while not var:
-                    var = f.readline().strip().split()
-                assert var[0] in seq_names
-                seqs.append(var[1])
-            cons = f.readline()[seq_offset:]
-            assert set(len(cons)) == set([len(seq) for seq in seqs]), '%s\n%s' % (seqs, cons)
+    seq_len = len(cons)
+    cons_score_counts = Counter({' ': 0, '.': 0, ':': 0, '*': 0})  # Must initialize properly
+    cons_score_counts.update(cons)
+    assert sum(cons_score_counts.values()) == seq_len
 
-            total_len_seq += len(seqs[0])
-            cons_score_counts.update(cons)
-            cols_with_gaps = set()
-            for seq in seqs:
-                cols_with_gaps.update([i for i, c in seq if c not in aas])
-            num_cols_with_gaps += len(cols_with_gaps)
+    cols_with_gaps = set()
+    for seq in seqs.values():
+        cols_with_gaps.update([i for i, c in enumerate(seq) if c in '.-'])
+    num_head_gaps = next(i for i in xrange(seq_len) if i not in cols_with_gaps)
+    num_tail_gaps = seq_len \
+            - next(i for i in reversed(xrange(seq_len)) if i not in cols_with_gaps)
 
-            f.readline()
-
-        assert sum(cons_score_counts.values()) == total_len
-        colon_weight = 0.8
-        period_weight = 0.6
-        score_with_gaps = float(
-                cons_score_counts['*']
-                + colon_weight * cons_score_counts[':']
-                + period_weight * cons_score_counts['.']) / total_len_seq
-        score_without_gaps = float(
-                cons_score_counts['*']
-                + colon_weight * cons_score_counts[':']
-                + period_weight * cons_score_counts['.']) / (total_len_seq-num_cols_with_gaps)
-        return score_with_gaps, score_without_gaps
+    colon_weight = 0.8
+    period_weight = 0.6
+    numerator = float(
+            cons_score_counts['*']
+            + colon_weight * cons_score_counts[':']
+            + period_weight * cons_score_counts['.'])
+    score_with_gaps = numerator / seq_len
+    score_without_gaps = numerator / (seq_len - len(cols_with_gaps))
+    score_without_head_tail_gaps = numerator / (seq_len - num_head_gaps - num_tail_gaps)
+    return score_with_gaps, score_without_gaps, score_without_head_tail_gaps
