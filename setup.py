@@ -3,6 +3,10 @@ from distutils.core import setup
 from distutils.extension import Extension
 from Cython.Distutils import build_ext
 
+# To compile, run:
+#
+#       python setup.py build_ext --inplace
+
 include_dirs = [numpy.get_include()]
 
 ext_modules = [
