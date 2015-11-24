@@ -13,9 +13,9 @@ def score_clustal(fpath, period_weight=0.6, colon_weight=0.8, gap_treatment='all
     The gap_treatment parameter has the following options:
         'include_gaps': Include all sites regardless of gaps.
         'no_gaps': Ignore any site that has any gaps.
-        'no_head_or_tail_gaps': Consider exactly the sites between the first site with no gaps and
+        'no_head_or_tail_gaps': Include exactly the sites from the first site with no gaps to
             the last site with no gaps.
-        'all': Return a 3-tuple with all three scores.
+        'all': Return a 3-tuple with all three scores in this order.
     """
     assert gap_treatment in ['include_gaps', 'no_gaps', 'no_head_or_tail_gaps', 'all'], \
             'Invalid gap_treatment method: %s' % gap_treatment
@@ -59,11 +59,11 @@ def score_clustal(fpath, period_weight=0.6, colon_weight=0.8, gap_treatment='all
     assert sum(cons_class_counts.values()) == seq_len
 
     cols_with_gaps = set()
-    for seq in seqs.values():
+    for seq in seq_given_seq_name.values():
         cols_with_gaps.update([i for i, c in enumerate(seq) if c in '.-'])
     num_head_gaps = next(i for i in xrange(seq_len) if i not in cols_with_gaps)
     num_tail_gaps = seq_len \
-            - next(i for i in reversed(xrange(seq_len)) if i not in cols_with_gaps)
+            - (next(i for i in reversed(xrange(seq_len)) if i not in cols_with_gaps) + 1)
 
     numerator = float(
             cons_class_counts['*']
