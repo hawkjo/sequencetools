@@ -1,11 +1,24 @@
+#!/usr/bin/env python
+"""
+general_sequence_tools.py
+
+A few basic tools for sequence manipulation and processing.
+"""
+
+__author__ = 'John Hawkins'
+__copyright__ = 'Copyright 2014 John Hawkins'
+__license__ = 'Apache 2.0'
+
+
 import sys
 import os
 import string
 import re
 from copy import deepcopy
-from itertools import product
+from itertools import product, izip
 from collections import Counter
 from Bio import SeqIO
+
 
 dna_complements = string.maketrans('acgtnACGTN', 'tgcanTGCAN')
 
@@ -13,6 +26,16 @@ dna_complements = string.maketrans('acgtnACGTN', 'tgcanTGCAN')
 def dna_rev_comp(dna_string):
     # Note that this is string translation, not biopython
     return dna_string.translate(dna_complements)[::-1]
+
+
+def all_kmers(dna_string, k, rev_comp=True):
+    if rev_comp:
+        strings = [dna_string, dna_rev_comp(dna_string)]
+    else:
+        strings = [dna_string]
+    return [s[i:i+k]
+            for s in strings
+            for i in range(len(dna_string)-k+1)]
 
 
 def transcribe(dna_string):
@@ -98,6 +121,12 @@ for codon, aa in aa_given_codon.items():
     assert aa == aa_or_X_given_codon[codon]
 
 
+aa_or_X_no_stop_given_codon = {}
+for codon, aa in aa_or_X_given_codon.items():
+    if aa == '*':
+        aa = 'X'
+    aa_or_X_no_stop_given_codon[codon] = aa
+
 def iterate_codons(na_string):
     assert isinstance(na_string, str)
     return (na_string[i:i+3] for i in xrange(0, len(na_string), 3))
@@ -105,6 +134,10 @@ def iterate_codons(na_string):
 
 def simple_translate(rna_string):
     return ''.join([aa_or_X_given_codon[codon] for codon in iterate_codons(rna_string)])
+
+
+def simple_translate_w_stop_as_X(rna_string):
+    return ''.join([aa_or_X_no_stop_given_codon[codon] for codon in iterate_codons(rna_string)])
 
 
 def translate_with_warnings(rna_string, next_rna_codon=None):
