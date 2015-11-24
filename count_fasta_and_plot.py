@@ -75,10 +75,10 @@ def count_fasta_and_plot(fasta_fname,
     ax.plot(seq_lens, linewidth=2)
     for i in range(len(N_seq_ind)):
         ax.plot([N_seq_ind[i], N_seq_ind[i]], [0, N_bp[i]],
-                linewidth=2, label='N%d' % (Ns[i]), zorder=-1)
+                linewidth=2, label='N%d=%d, %d seqs' % (Ns[i], N_bp[i], N_seq_ind[i]), zorder=-1)
     ax.set_xlabel('Sequence Length Rank')
     ax.set_ylabel('Sequence Length (bp)')
-    ax.set_title(fig_title)
+    ax.set_title(fig_title + '\nTotal bp: %d' % total_bases)
     plt.legend()
     if fig_fname is not None:
         fig.savefig(fig_fname)
@@ -87,7 +87,8 @@ def count_fasta_and_plot(fasta_fname,
     plt.close(fig)
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        sys.exit("Usage: count_fasta_and_plot.py <fasta file>")
+    if len(sys.argv) != 3:
+        sys.exit("Usage: count_fasta_and_plot.py <fasta_file> <plot_fpath>")
     fasta_fname = sys.argv[1]
-    count_fasta_and_plot(fasta_fname)
+    plot_fpath = sys.argv[2]
+    count_fasta_and_plot(fasta_fname, fig_fname=plot_fpath)
