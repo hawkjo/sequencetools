@@ -24,18 +24,21 @@ cdef int hamming_distance(char *read,
 def simple_hamming_distance(first, second):
     return hamming_distance(first, second, len(first), len(second), 0)
 
-cdef int cython_hamming_with_N(char *s1, char *s2, int compare_length):
+cdef int cython_hamming_with_N(char *ref, char *seq, int compare_length):
+    """
+    Test hamming distance, where Ns in the first sequence don't count.
+    """
     cdef int mismatches = 0
     cdef int i
 
     for i in range(compare_length):
-        if 'N' != s1[i] != s2[i] != 'N':
+        if 'N' != ref[i] != seq[i]:
             mismatches += 1
 
     return mismatches
 
-def simple_hamming_with_N(first, second):
-    return cython_hamming_with_N(first, second, min(len(first), len(second)))
+def simple_hamming_with_N(ref, seq):
+    return cython_hamming_with_N(ref, seq, min(len(ref), len(seq)))
 
 def find_adapter_positions(read, adapter, int min_comparison_length, int max_distance):
     cdef int read_length = len(read)
