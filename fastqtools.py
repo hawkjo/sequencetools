@@ -202,9 +202,13 @@ def extract_xy_data(input_fpaths, defline_format='illumina'):
     return output_dict
 
 def find_paired_and_unpaired_files(fq_dir, skip_I_files=True):
+    fq_fpaths = glob.glob(os.path.join(fq_dir, '*.fastq*'))
+    return find_paired_and_unpaired_files_from_fpaths(fq_fpaths, skip_I_files)
+
+
+def find_paired_and_unpaired_files_from_fpaths(fq_fpaths, skip_I_files=True):
     se_fpaths = []
     pe_fpaths = []
-    fq_fpaths = glob.glob(os.path.join(fq_dir, '*.fastq*'))
     fq_fpaths.sort()
     i = 0
     while i < len(fq_fpaths):
