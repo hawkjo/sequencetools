@@ -5,12 +5,32 @@ from adapters_cython import find_adapter_positions
 from fastqtools import get_GSAF_barcode
 from contaminants import get_fastqc_contaminant_list, output_contaminant_removal_statistics
 
-tru_seq_R1_rc = 'AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGTAGA'
-tru_seq_R2_rc = 'AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC'
+"""
+Let's lay out a schematic of the full read. The pieces are:
+
+    R[12]:  Read 1/2
+    SP[12]: Sequence Primer 1/2
+    P[57]:  P5/7 adapters
+    Index:  Demultiplexing index
+    dA/dT:  Poly-dA/T tails, dA only if readthrough
+    Ns:     Unread bases
+    *:      Reverse Complement
+    |>:     Wall attachment during amplification
+
+Then the read structure is:
+
+        dT      P5      SP1     R1      Ns      R2*     SP2*    P7*     dA      
+    |> ------- ------- ------- ------- ------- ------- ------- ------- ----
+          ---- ------- ------- ------- ------- ------- ------- ------- ------- <|
+        dA      P5*     SP1*    R1*     Ns*     R2      SP2     P7      dT
+"""
+
+tru_seq_SP1_rc = 'AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGTAGA'
+tru_seq_SP2_rc = 'AGATCGGAAGAGCACACGTCTGAACTCCAGTCAC'
 
 # Previous generation of adapters
-paired_end_R1_rc = tru_seq_R1_rc
-paired_end_R2_rc = 'AGATCGGAAGAGCGGTTCAGCAGGAATGCCGAGACCG'
+paired_end_SP1_rc = tru_seq_SP1_rc
+paired_end_SP2_rc = 'AGATCGGAAGAGCGGTTCAGCAGGAATGCCGAGACCG'
 
 P5_rc = 'TCTCGGTGGTCGCCGTATCATT'
 P7_rc = 'ATCTCGTATGCCGTCTTCTGCTTG'
@@ -20,11 +40,11 @@ A_tail = 'A' * 10
 
 def build_adapters(index_sequence='', max_length=None, primer_type='tru_seq'):
     if primer_type == 'tru_seq':
-        R1_rc = tru_seq_R1_rc
-        R2_rc = tru_seq_R2_rc
+        SP1_rc = tru_seq_SP1_rc
+        SP2_rc = tru_seq_SP2_rc
     elif primer_type == 'PE':
-        R1_rc = paired_end_R1_rc
-        R2_rc = paired_end_R2_rc
+        SP1_rc = paired_end_SP1_rc
+        SP2_rc = paired_end_SP2_rc
     else:
         raise ValueError('Invalid primer type: {0}'.format(primer_type))
     adapter_in_R1 = R2_rc + index_sequence + P7_rc + A_tail
