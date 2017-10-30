@@ -58,7 +58,7 @@ iupac_ambiguity_codes = {
     'H': 'ACT',
     'D': 'AGT',
     'B': 'CGT',
-    'N': 'GATC',
+    'N': 'ACGT',
     }
 
 iupac_ambiguity_complements = {
