@@ -39,25 +39,39 @@ def mafft_alignment(mafft_cmd, *args):
 
 
 def find_dna_synthesis_errors(ref_seq, observed_seq):
-#    ref_align, observed_align = mafft_ginsi_alignment(ref_seq, observed_seq)
-    alignments = pairwise2.align.globalms(ref_seq, observed_seq, 2, -1, -1, -1)
+    alignments = pairwise2.align.globalms(ref_seq, observed_seq, 2, -1, -1, -0.9)
     ref_align, observed_align = random.choice(alignments)[:2]  # Randomly select one of equals
-    subdel, ins = [], []
+    goodsubdel, ins = [], []
     bases = 'ACGT'
     bases_or_deletion = bases + '-'
     i = 0
     for rc, oc in zip(ref_align, observed_align):
-        if rc == oc:
-            # Matching bases
-            i += 1
-        elif rc in bases and oc in bases_or_deletion:
-            # Substitutions or deletions
-            subdel.append('{}{}{}'.format(rc, i, oc))
+        if rc == oc or (rc in bases and oc in bases_or_deletion):
+            # Matching bases or substitutions or deletions
+            goodsubdel.append('{}{}{}'.format(rc, i, oc))
             i += 1
         elif rc == '-' and oc in bases:
             # Insertions
             ins.append('I{}{}'.format(i, oc))
-        else:
+        elif rc != '-':
             # Sequencing error
             i += 1
-    return subdel, ins
+    return goodsubdel, ins
+
+
+def find_dna_errors(ref_seq, observed_seq):
+    alignments = pairwise2.align.globalms(ref_seq, observed_seq, 2, -1, -1, -0.9)
+    ref_align, observed_align = random.choice(alignments)[:2]  # Randomly select one of equals
+    goodsubdel, ins = [], []
+    bases = 'ACGT'
+    bases_or_deletion = bases + '-'
+    i = 0
+    for rc, oc in zip(ref_align, observed_align):
+        if rc != '-':
+            # Matching bases or substitutions or deletions
+            goodsubdel.append('{}{}{}'.format(rc, i, oc))
+            i += 1
+        else:
+            # Insertions
+            ins.append('I{}{}'.format(i, oc))
+    return goodsubdel, ins
