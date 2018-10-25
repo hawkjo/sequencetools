@@ -3,6 +3,30 @@ from collections import Counter
 from protein_sequence_tools import is_strong_group, is_weak_group
 
 
+def find_col_type(col_set):
+    if col_set <= set('.-'):
+        return None  # no amino acids
+    elif len(col_set) == 1:
+        return 'u'  # unanimous
+    elif col_set & set('.-'):
+        return 'g'  # gapped
+    elif is_strong_group(col_set):
+        return 's'  # strong conservation
+    elif is_weak_group(col_set):
+        return 'w'  # weak conservation
+    else:
+        return 'n'  # no conservation
+
+
+def alignment_types_string(SeqIO_records):
+    rec_strs = [str(rec.seq) for rec in SeqIO_records]
+    assert len(set(len(rec_str) for rec_str in rec_strs)) == 1, 'MSA with unequal seq lens'
+    msa_len = len(rec_strs[0])
+    col_sets = [set(''.join(rs[i] for rs in rec_strs)) for i in xrange(msa_len)]
+    col_types = [find_col_type(col_set) for col_set in col_sets]
+    return ''.join([ct for ct in col_types if ct is not None])
+
+
 def tally_alignment_types(SeqIO_records, gap_treatment='include_gaps'):
     rec_strs = [str(rec.seq) for rec in SeqIO_records]
     assert len(set(len(rec_str) for rec_str in rec_strs)) == 1, 'MSA with unequal seq lens'
@@ -10,20 +34,6 @@ def tally_alignment_types(SeqIO_records, gap_treatment='include_gaps'):
 
     assert gap_treatment in ['include_gaps', 'no_gaps', 'no_head_or_tail_gaps'], \
             'Invalid gap_treatment method: %s' % gap_treatment
-
-    def find_col_type(col_set):
-        if col_set <= set('.-'):
-            return None  # no amino acids
-        elif len(col_set) == 1:
-            return 'u'  # unanimous
-        elif col_set & set('.-'):
-            return 'g'  # gapped
-        elif is_strong_group(col_set):
-            return 's'  # strong conservation
-        elif is_weak_group(col_set):
-            return 'w'  # weak conservation
-        else:
-            return 'n'  # no conservation
 
     col_sets = [set(''.join(rs[i] for rs in rec_strs)) for i in xrange(msa_len)]
     col_types = [find_col_type(col_set) for col_set in col_sets]
