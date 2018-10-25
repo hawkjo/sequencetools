@@ -47,8 +47,8 @@ def build_adapters(index_sequence='', max_length=None, primer_type='tru_seq'):
         SP2_rc = paired_end_SP2_rc
     else:
         raise ValueError('Invalid primer type: {0}'.format(primer_type))
-    adapter_in_R1 = R2_rc + index_sequence + P7_rc + A_tail
-    adapter_in_R2 = R1_rc + P5_rc + A_tail
+    adapter_in_R1 = SP2_rc + index_sequence + P7_rc + A_tail
+    adapter_in_R2 = SP1_rc + P5_rc + A_tail
     truncated_slice = slice(None, max_length)
     return adapter_in_R1[truncated_slice], adapter_in_R2[truncated_slice]
 
