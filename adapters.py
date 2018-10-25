@@ -19,10 +19,10 @@ Let's lay out a schematic of the full read. The pieces are:
 
 Then the read structure is:
 
-        dT      P5      SP1     R1      Ns      R2*     SP2*    P7*     dA      
-    |> ------- ------- ------- ------- ------- ------- ------- ------- ----
-          ---- ------- ------- ------- ------- ------- ------- ------- ------- <|
-        dA      P5*     SP1*    R1*     Ns*     R2      SP2     P7      dT
+        dT      P5      SP1     R1      Ns      R2*     SP2*    Index   P7*     dA      
+    |> ------- ------- ------- ------- ------- ------- ------- ------- ------- ----
+          ---- ------- ------- ------- ------- ------- ------- ------- ------- ------- <|
+        dA      P5*     SP1*    R1*     Ns*     R2      SP2     Index*  P7      dT
 """
 
 tru_seq_SP1_rc = 'AGATCGGAAGAGCGTCGTGTAGGGAAAGAGTGTAGA'
