@@ -27,8 +27,11 @@ def alignment_types_string(SeqIO_records):
     return ''.join([ct for ct in col_types if ct is not None])
 
 
-def tally_alignment_types(SeqIO_records, gap_treatment='include_gaps'):
-    rec_strs = [str(rec.seq) for rec in SeqIO_records]
+def tally_alignment_types(SeqIO_records,
+                          gap_treatment='include_gaps',
+                          start=None,
+                          end=None):
+    rec_strs = [str(rec.seq[start:end]) for rec in SeqIO_records]
     assert len(set(len(rec_str) for rec_str in rec_strs)) == 1, 'MSA with unequal seq lens'
     msa_len = len(rec_strs[0])
 
